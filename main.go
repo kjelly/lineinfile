@@ -23,12 +23,20 @@ func readFile(path string) string {
 
 func main() {
 	var args struct {
-		Path    string `arg:"positional"`
-		Pattern string `arg:"positional"`
-		Mode    string `arg:"-m"`
-		Text    string `arg:"-t"`
+		Path          string `arg:"positional"`
+		Pattern       string `arg:"positional"`
+		Mode          string `arg:"-m"`
+		Text          string `arg:"-t"`
+		StartLine     int
+		EndLine       int
+		BeforePattern string
+		AfterPattern  string
 	}
 	args.Text = ""
+	args.StartLine = -1
+	args.EndLine = -1
+	args.BeforePattern = ""
+	args.AfterPattern = ""
 	arg.MustParse(&args)
 
 	lines := strings.Split(readFile(args.Path), "\n")
@@ -41,19 +49,24 @@ func main() {
 
 	var outputs []string
 
+	p, err := lib.InitTextProcessor(args.StartLine, args.EndLine, args.BeforePattern, args.AfterPattern)
+
+	if err != nil {
+		panic(err)
+	}
 	switch args.Mode {
 	case "present":
-		outputs = lib.Present(lines, re, args.Pattern, args.Text)
+		outputs = p.Present(lines, re, args.Pattern, args.Text)
 	case "absent":
-		outputs = lib.Absent(lines, re)
+		outputs = p.Absent(lines, re)
 	case "insertAfter":
-		outputs = lib.InsertAfter(lines, re, args.Text)
+		outputs = p.InsertAfter(lines, re, args.Text)
 	case "insertBefore":
-		outputs = lib.InsertBefore(lines, re, args.Text)
+		outputs = p.InsertBefore(lines, re, args.Text)
 	case "replace":
-		outputs = lib.Replace(lines, re, args.Text)
+		outputs = p.Replace(lines, re, args.Text)
 	default:
-		outputs = lib.Present(lines, re, args.Pattern, args.Text)
+		outputs = p.Present(lines, re, args.Pattern, args.Text)
 
 	}
 
