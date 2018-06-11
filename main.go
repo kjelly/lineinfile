@@ -71,7 +71,7 @@ func main() {
 	}
 
 	for _, l := range outputs {
-		fmt.Printf("%s\n", l)
+		fmt.Printf("%s", l)
 	}
 
 }
