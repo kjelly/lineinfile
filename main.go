@@ -70,8 +70,6 @@ func main() {
 
 	}
 
-	for _, l := range outputs {
-		fmt.Printf("%s", l)
-	}
+	fmt.Printf("%s", strings.Join(outputs, "\n"))
 
 }
