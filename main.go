@@ -45,7 +45,7 @@ func main() {
 	var outputs []string
 
 	p, err := lib.InitTextProcessor(args.Pattern, "", args.Text, args.StartLine,
-		args.EndLine, args.BeforePattern, args.AfterPattern)
+		args.EndLine, args.AfterPattern, args.BeforePattern)
 
 	if err != nil {
 		panic(err)

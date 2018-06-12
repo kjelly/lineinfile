@@ -6,8 +6,8 @@ import (
 )
 
 // InitTextProcessor init TextProcessor
-func InitTextProcessor(pattern string, replacedText string, text string, startLine int, endLine int, beforePattern string,
-	afterPattern string) (*TextProcessor, error) {
+func InitTextProcessor(pattern string, replacedText string, text string, startLine int, endLine int, afterPattern string,
+	beforePattern string) (*TextProcessor, error) {
 	var beforePatternRe, afterPatternRe *regexp.Regexp
 	var err error
 	if beforePattern == "" {
