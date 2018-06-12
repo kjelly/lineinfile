@@ -1,33 +1,45 @@
 package lib
 
 import (
-	_ "fmt"
 	"regexp"
 	"strings"
 )
 
+// InitTextProcessor init TextProcessor
 func InitTextProcessor(startLine int, endLine int, beforePattern string,
 	afterPattern string) (*TextProcessor, error) {
-	re1, err := regexp.Compile(beforePattern)
-	if err != nil {
-		return nil, err
+	var beforePatternRe, afterPatternRe *regexp.Regexp
+	var err error
+	if beforePattern == "" {
+		beforePatternRe = nil
+	} else {
+		beforePatternRe, err = regexp.Compile(beforePattern)
+		if err != nil {
+			return nil, err
+		}
 	}
-	re2, err := regexp.Compile(afterPattern)
-	if err != nil {
-		return nil, err
+	if afterPattern == "" {
+		afterPatternRe = nil
+	} else {
+		afterPatternRe, err = regexp.Compile(afterPattern)
+		if err != nil {
+			return nil, err
+		}
 	}
 	t := &TextProcessor{
 		StartLine:          startLine,
 		EndLine:            endLine,
-		BeforePattern:      re1,
-		AfterPattern:       re2,
+		BeforePattern:      beforePatternRe,
+		AfterPattern:       afterPatternRe,
 		inSearchArea:       false,
 		lastSearchAreaLine: -1,
 	}
+	t.reset()
 	return t, nil
 
 }
 
+// TextProcessor used for processing text
 type TextProcessor struct {
 	StartLine          int
 	EndLine            int
@@ -37,11 +49,16 @@ type TextProcessor struct {
 	lastSearchAreaLine int
 }
 
+func (t *TextProcessor) reset() {
+	t.inSearchArea = false
+	t.lastSearchAreaLine = -1
+}
+
 // Replace replace pattern with text
 func (t TextProcessor) Replace(lines []string, re *regexp.Regexp, text string) []string {
 	var outputs []string
 	outputs = t.handleLines(lines, re, func(l string, m []string, o []string, re *regexp.Regexp) []string {
-		return append(o, strings.Replace(l, m[0], text, -1))
+		return append(o, string(re.ReplaceAllString(l, text)))
 
 	}, nil)
 	return outputs
@@ -52,7 +69,6 @@ func (t TextProcessor) InsertAfter(lines []string, re *regexp.Regexp, text strin
 	var outputs []string
 	outputs = t.handleLines(lines, re, func(l string, m []string, o []string, re *regexp.Regexp) []string {
 		return append(o, strings.Replace(l, m[0], m[0]+text, -1))
-
 	}, nil)
 	return outputs
 }
@@ -95,16 +111,29 @@ func (t *TextProcessor) skip(i int, line string) bool {
 	if t.EndLine != -1 && i > t.StartLine {
 		return true
 	}
-	results := t.AfterPattern.FindAllString(line, -1)
-	if results != nil {
-		t.inSearchArea = true
+	if t.AfterPattern == nil && t.BeforePattern == nil {
+		return false
 	}
-	results = t.BeforePattern.FindAllString(line, -1)
-	if t.inSearchArea && results != nil {
-		t.inSearchArea = false
-		t.lastSearchAreaLine = i
+
+	var results []string
+	if t.AfterPattern != nil {
+		results = t.AfterPattern.FindAllString(line, -1)
+		if results != nil {
+			t.inSearchArea = true
+			return true
+		}
 	}
-	return t.inSearchArea
+
+	if t.BeforePattern != nil {
+		results = t.BeforePattern.FindAllString(line, -1)
+		if t.inSearchArea && results != nil {
+			t.inSearchArea = false
+			t.lastSearchAreaLine = i
+		}
+
+	}
+
+	return !t.inSearchArea
 }
 
 func insertIntoLines(index int, line string, lines []string) []string {
