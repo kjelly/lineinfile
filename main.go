@@ -8,7 +8,6 @@ import (
 
 	"github.com/kjelly/lineinfile/exit"
 	"github.com/kjelly/lineinfile/lib"
-	"regexp"
 	"strings"
 )
 
@@ -43,30 +42,25 @@ func main() {
 
 	lines := strings.Split(readFile(args.Path), "\n")
 
-	re, err := regexp.Compile(args.Pattern)
-
-	if err != nil {
-		os.Exit(exit.INVAILED_PATTERN)
-	}
-
 	var outputs []string
 
-	p, err := lib.InitTextProcessor(args.StartLine, args.EndLine, args.BeforePattern, args.AfterPattern)
+	p, err := lib.InitTextProcessor(args.Pattern, "", args.Text, args.StartLine,
+		args.EndLine, args.BeforePattern, args.AfterPattern)
 
 	if err != nil {
 		panic(err)
 	}
 	switch args.Mode {
 	case "present":
-		outputs = p.Present(lines, re, args.Pattern, args.Text)
+		outputs = p.Present(lines)
 	case "absent":
-		outputs = p.Absent(lines, re)
+		outputs = p.Absent(lines)
 	case "insertafter":
-		outputs = p.InsertAfter(lines, re, args.Text)
+		outputs = p.InsertAfter(lines)
 	case "insertbefore":
-		outputs = p.InsertBefore(lines, re, args.Text)
+		outputs = p.InsertBefore(lines)
 	case "replace":
-		outputs = p.Replace(lines, re, args.Text)
+		outputs = p.Replace(lines)
 	default:
 		fmt.Printf("Mdoe not found\n")
 		os.Exit(0)

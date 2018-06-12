@@ -6,7 +6,7 @@ import (
 )
 
 // InitTextProcessor init TextProcessor
-func InitTextProcessor(startLine int, endLine int, beforePattern string,
+func InitTextProcessor(pattern string, replacedText string, text string, startLine int, endLine int, beforePattern string,
 	afterPattern string) (*TextProcessor, error) {
 	var beforePatternRe, afterPatternRe *regexp.Regexp
 	var err error
@@ -26,11 +26,30 @@ func InitTextProcessor(startLine int, endLine int, beforePattern string,
 			return nil, err
 		}
 	}
+	patternRe, err := regexp.Compile(pattern)
+	if err != nil {
+		return nil, err
+	}
+	var replacedTextRe *regexp.Regexp
+	if replacedText == "" {
+		replacedText = pattern
+		replacedTextRe = patternRe
+	} else {
+		replacedTextRe, err = regexp.Compile(replacedText)
+		if err != nil {
+			return nil, err
+		}
+	}
 	t := &TextProcessor{
 		StartLine:          startLine,
 		EndLine:            endLine,
-		BeforePattern:      beforePatternRe,
-		AfterPattern:       afterPatternRe,
+		BeforePatternRe:    beforePatternRe,
+		AfterPatternRe:     afterPatternRe,
+		pattern:            pattern,
+		patternRe:          patternRe,
+		replacedText:       replacedText,
+		replacedTextRe:     replacedTextRe,
+		text:               text,
 		inSearchArea:       false,
 		lastSearchAreaLine: -1,
 	}
@@ -43,8 +62,13 @@ func InitTextProcessor(startLine int, endLine int, beforePattern string,
 type TextProcessor struct {
 	StartLine          int
 	EndLine            int
-	BeforePattern      *regexp.Regexp
-	AfterPattern       *regexp.Regexp
+	BeforePatternRe    *regexp.Regexp
+	AfterPatternRe     *regexp.Regexp
+	pattern            string
+	patternRe          *regexp.Regexp
+	replacedText       string
+	replacedTextRe     *regexp.Regexp
+	text               string
 	inSearchArea       bool
 	lastSearchAreaLine int
 }
@@ -55,51 +79,51 @@ func (t *TextProcessor) reset() {
 }
 
 // Replace replace pattern with text
-func (t TextProcessor) Replace(lines []string, re *regexp.Regexp, text string) []string {
+func (t TextProcessor) Replace(lines []string) []string {
 	var outputs []string
-	outputs = t.handleLines(lines, re, func(l string, m []string, o []string, re *regexp.Regexp) []string {
-		return append(o, string(re.ReplaceAllString(l, text)))
+	outputs = t.handleLines(lines, t.patternRe, func(l string, m []string, o []string) []string {
+		return append(o, string(t.patternRe.ReplaceAllString(l, t.text)))
 
 	}, nil)
 	return outputs
 }
 
 // InsertAfter insert text after pattern.
-func (t TextProcessor) InsertAfter(lines []string, re *regexp.Regexp, text string) []string {
+func (t TextProcessor) InsertAfter(lines []string) []string {
 	var outputs []string
-	outputs = t.handleLines(lines, re, func(l string, m []string, o []string, re *regexp.Regexp) []string {
-		return append(o, strings.Replace(l, m[0], m[0]+text, -1))
+	outputs = t.handleLines(lines, t.patternRe, func(l string, m []string, o []string) []string {
+		return append(o, strings.Replace(l, m[0], m[0]+t.text, -1))
 	}, nil)
 	return outputs
 }
 
 // InsertBefore insert text before pattern.
-func (t TextProcessor) InsertBefore(lines []string, re *regexp.Regexp, text string) []string {
+func (t TextProcessor) InsertBefore(lines []string) []string {
 	var outputs []string
-	outputs = t.handleLines(lines, re, func(l string, m []string, o []string, re *regexp.Regexp) []string {
-		return append(o, strings.Replace(l, m[0], text+m[0], -1))
+	outputs = t.handleLines(lines, t.patternRe, func(l string, m []string, o []string) []string {
+		return append(o, strings.Replace(l, m[0], t.text+m[0], -1))
 
 	}, nil)
 	return outputs
 }
 
 // Absent remove pattern if found.
-func (t TextProcessor) Absent(lines []string, re *regexp.Regexp) []string {
+func (t TextProcessor) Absent(lines []string) []string {
 	var outputs []string
-	outputs = t.handleLines(lines, re, func(l string, m []string, o []string, re *regexp.Regexp) []string {
+	outputs = t.handleLines(lines, t.patternRe, func(l string, m []string, o []string) []string {
 		return o
 	}, nil)
 	return outputs
 }
 
 // Present make sure pattern exists.
-func (t TextProcessor) Present(lines []string, re *regexp.Regexp, pattern string, text string) []string {
+func (t TextProcessor) Present(lines []string) []string {
 	var outputs []string
-	outputs = t.handleLines(lines, re, nil, func(o []string, re *regexp.Regexp, p int) []string {
-		if text == "" {
-			return insertIntoLines(p, pattern, o)
+	outputs = t.handleLines(lines, t.patternRe, nil, func(o []string, p int) []string {
+		if t.text == "" {
+			return insertIntoLines(p, t.pattern, o)
 		}
-		return insertIntoLines(p, text, o)
+		return insertIntoLines(p, t.text, o)
 	})
 	return outputs
 }
@@ -111,21 +135,21 @@ func (t *TextProcessor) skip(i int, line string) bool {
 	if t.EndLine != -1 && i > t.StartLine {
 		return true
 	}
-	if t.AfterPattern == nil && t.BeforePattern == nil {
+	if t.AfterPatternRe == nil && t.BeforePatternRe == nil {
 		return false
 	}
 
 	var results []string
-	if t.AfterPattern != nil {
-		results = t.AfterPattern.FindAllString(line, -1)
+	if t.AfterPatternRe != nil {
+		results = t.AfterPatternRe.FindAllString(line, -1)
 		if results != nil {
 			t.inSearchArea = true
 			return true
 		}
 	}
 
-	if t.BeforePattern != nil {
-		results = t.BeforePattern.FindAllString(line, -1)
+	if t.BeforePatternRe != nil {
+		results = t.BeforePatternRe.FindAllString(line, -1)
 		if t.inSearchArea && results != nil {
 			t.inSearchArea = false
 			t.lastSearchAreaLine = i
@@ -158,8 +182,8 @@ func maxInt(v int, arr ...int) int {
 	return max
 }
 
-func (t TextProcessor) handleLines(lines []string, re *regexp.Regexp, matchFunc func(string, []string, []string, *regexp.Regexp) []string,
-	noMatchFunc func([]string, *regexp.Regexp, int) []string) []string {
+func (t TextProcessor) handleLines(lines []string, re *regexp.Regexp, matchFunc func(string, []string, []string) []string,
+	noMatchFunc func([]string, int) []string) []string {
 	var outputs []string
 	matched := false
 	for i, l := range lines {
@@ -170,7 +194,7 @@ func (t TextProcessor) handleLines(lines []string, re *regexp.Regexp, matchFunc 
 			results := re.FindAllString(l, -1)
 			if results != nil {
 				if matchFunc != nil {
-					outputs = matchFunc(l, results, outputs, re)
+					outputs = matchFunc(l, results, outputs)
 				} else {
 					outputs = append(outputs, l)
 				}
@@ -185,7 +209,7 @@ func (t TextProcessor) handleLines(lines []string, re *regexp.Regexp, matchFunc 
 		if p == -1 {
 			p = len(outputs) - 1
 		}
-		outputs = noMatchFunc(outputs, re, p)
+		outputs = noMatchFunc(outputs, p)
 	}
 	return outputs
 }
