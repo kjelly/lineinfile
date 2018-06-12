@@ -31,12 +31,14 @@ func main() {
 		EndLine       int
 		BeforePattern string
 		AfterPattern  string
+		Inplace       bool
 	}
 	args.Text = ""
 	args.StartLine = -1
 	args.EndLine = -1
 	args.BeforePattern = ""
 	args.AfterPattern = ""
+	args.Inplace = false
 	arg.MustParse(&args)
 
 	lines := strings.Split(readFile(args.Path), "\n")
@@ -59,17 +61,18 @@ func main() {
 		outputs = p.Present(lines, re, args.Pattern, args.Text)
 	case "absent":
 		outputs = p.Absent(lines, re)
-	case "insertAfter":
 		outputs = p.InsertAfter(lines, re, args.Text)
-	case "insertBefore":
 		outputs = p.InsertBefore(lines, re, args.Text)
 	case "replace":
 		outputs = p.Replace(lines, re, args.Text)
 	default:
-		outputs = p.Present(lines, re, args.Pattern, args.Text)
 
 	}
 
-	fmt.Printf("%s", strings.Join(outputs, "\n"))
+	if args.Inplace {
+		ioutil.WriteFile(args.Path, []byte(strings.Join(outputs, "\n")), 0666)
+	} else {
+		fmt.Printf("%s", strings.Join(outputs, "\n"))
+	}
 
 }
