@@ -61,11 +61,15 @@ func main() {
 		outputs = p.Present(lines, re, args.Pattern, args.Text)
 	case "absent":
 		outputs = p.Absent(lines, re)
+	case "insertafter":
 		outputs = p.InsertAfter(lines, re, args.Text)
+	case "insertbefore":
 		outputs = p.InsertBefore(lines, re, args.Text)
 	case "replace":
 		outputs = p.Replace(lines, re, args.Text)
 	default:
+		fmt.Printf("Mdoe not found\n")
+		os.Exit(0)
 
 	}
 
