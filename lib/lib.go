@@ -132,7 +132,7 @@ func (t *TextProcessor) skip(i int, line string) bool {
 	if t.StartLine != -1 && i < t.StartLine {
 		return true
 	}
-	if t.EndLine != -1 && i > t.StartLine {
+	if t.EndLine != -1 && i > t.EndLine {
 		return true
 	}
 	if t.AfterPatternRe == nil && t.BeforePatternRe == nil {
